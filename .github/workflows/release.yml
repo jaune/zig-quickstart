@@ -1,0 +1,81 @@
+name: release
+on: [workflow_dispatch]
+jobs:
+  read-zig-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: "read .zig-verison"
+        uses: actions/github-script@v7
+        id: read-zig-verison
+        with:
+          result-encoding: string
+          script: |
+            try {
+              return require('fs').readFileSync('./.zig-version', { encoding: 'utf-8' }).trim()
+            } catch(err) {
+              core.error("Error while reading ./.zig-version")
+              core.setFailed(err)
+            }
+    outputs:
+      zig-verison: ${{steps.read-zig-verison.outputs.result}}
+
+  build-windows-releases:
+    needs: read-zig-version
+    strategy:
+      matrix:
+        target: [x86_64-windows, aarch64-windows]
+      fail-fast: false
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v1
+        with:
+          version: ${{needs.read-zig-version.outputs.zig-verison}}
+      - run: |
+          zig build -Dtarget=${{matrix.target}} -Doptimize=ReleaseSafe --summary all
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{matrix.target}}
+          path: |
+            ./zig-out/bin/*
+
+  build-macos-releases:
+    needs: read-zig-version
+    strategy:
+      matrix:
+        target: [x86_64-macos, aarch64-macos]
+      fail-fast: false
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v1
+        with:
+          version: ${{needs.read-zig-version.outputs.zig-verison}}
+      - run: |
+          zig build -Dtarget=${{matrix.target}} -Doptimize=ReleaseSafe --summary all
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{matrix.target}}
+          path: |
+            ./zig-out/bin/*
+
+  build-linux-releases:
+    needs: read-zig-version
+    strategy:
+      matrix:
+        target: [x86_64-linux, aarch64-linux]
+      fail-fast: false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v1
+        with:
+          version: ${{needs.read-zig-version.outputs.zig-verison}}
+      - run: |
+          zig build -Dtarget=${{matrix.target}} -Doptimize=ReleaseSafe --summary all
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{matrix.target}}
+          path: |
+            ./zig-out/bin/*
