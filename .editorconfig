@@ -18,3 +18,11 @@ indent_size = 2
 [*.yml]
 indent_style = space
 indent_size = 2
+
+[*.mjs]
+indent_style = space
+indent_size = 2
+
+[*.ts]
+indent_style = space
+indent_size = 2

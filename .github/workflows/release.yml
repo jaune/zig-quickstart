@@ -1,81 +1,113 @@
+permissions:
+  contents: write
+
 name: release
 on: [workflow_dispatch]
 jobs:
-  read-zig-version:
+  variables:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: "read .zig-verison"
+      - name: compute-variables
         uses: actions/github-script@v7
-        id: read-zig-verison
+        id: variables
         with:
           result-encoding: string
           script: |
-            try {
-              return require('fs').readFileSync('./.zig-version', { encoding: 'utf-8' }).trim()
-            } catch(err) {
-              core.error("Error while reading ./.zig-version")
-              core.setFailed(err)
-            }
+            const { default: script } = await import('${{ github.workspace }}/.github/workflows/scripts/compute-variables/index.mjs');
+            return await script({ github, context, core, exec, glob, io, fetch, __original_require__ });
     outputs:
-      zig-verison: ${{steps.read-zig-verison.outputs.result}}
+      zig-verison: ${{steps.variables.outputs.zig-version}}
+      short-sha: ${{steps.variables.outputs.short-sha}}
+      branch-name: ${{steps.variables.outputs.branch-name}}
+      release-tag: ${{steps.variables.outputs.release-tag}}
 
-  build-windows-releases:
-    needs: read-zig-version
+  build-windows-artifacts:
+    needs: [variables]
     strategy:
       matrix:
-        target: [x86_64-windows, aarch64-windows]
+        os: [windows]
+        arch: [x86_64, aarch64]
       fail-fast: false
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: mlugg/setup-zig@v1
         with:
-          version: ${{needs.read-zig-version.outputs.zig-verison}}
+          version: ${{needs.variables.outputs.zig-verison}}
       - run: |
-          zig build -Dtarget=${{matrix.target}} -Doptimize=ReleaseSafe --summary all
+          zig build -Dtarget=${{matrix.arch}}-${{matrix.os}} -Doptimize=ReleaseSafe --summary all
+      - run: |
+          Compress-Archive -Path ./zig-out/bin/* -Destination zig-quickstart-${{matrix.os}}-${{matrix.arch}}-${{needs.variables.outputs.release-tag}}.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: release-${{matrix.target}}
+          name: artifact-${{matrix.os}}-${{matrix.arch}}
           path: |
-            ./zig-out/bin/*
+            ./zig-quickstart-${{matrix.os}}-${{matrix.arch}}-${{needs.variables.outputs.release-tag}}.zip
 
-  build-macos-releases:
-    needs: read-zig-version
+  build-macos-artifacts:
+    needs: [variables]
     strategy:
       matrix:
-        target: [x86_64-macos, aarch64-macos]
+        os: [macos]
+        arch: [x86_64, aarch64]
       fail-fast: false
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: mlugg/setup-zig@v1
         with:
-          version: ${{needs.read-zig-version.outputs.zig-verison}}
+          version: ${{needs.variables.outputs.zig-verison}}
       - run: |
-          zig build -Dtarget=${{matrix.target}} -Doptimize=ReleaseSafe --summary all
+          zig build -Dtarget=${{matrix.arch}}-${{matrix.os}} -Doptimize=ReleaseSafe --summary all
+      - run: |
+          tar -cJf ./zig-quickstart-${{matrix.os}}-${{matrix.arch}}-${{needs.variables.outputs.release-tag}}.tar.xz ./zig-out/bin/*
       - uses: actions/upload-artifact@v4
         with:
-          name: release-${{matrix.target}}
+          name: artifact-${{matrix.os}}-${{matrix.arch}}
           path: |
-            ./zig-out/bin/*
+            ./zig-quickstart-${{matrix.os}}-${{matrix.arch}}-${{needs.variables.outputs.release-tag}}.tar.xz
 
-  build-linux-releases:
-    needs: read-zig-version
+  build-linux-artifacts:
+    needs: [variables]
     strategy:
       matrix:
-        target: [x86_64-linux, aarch64-linux]
+        os: [linux]
+        arch: [x86_64, aarch64]
       fail-fast: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: mlugg/setup-zig@v1
         with:
-          version: ${{needs.read-zig-version.outputs.zig-verison}}
+          version: ${{needs.variables.outputs.zig-verison}}
       - run: |
-          zig build -Dtarget=${{matrix.target}} -Doptimize=ReleaseSafe --summary all
+          zig build -Dtarget=${{matrix.arch}}-${{matrix.os}} -Doptimize=ReleaseSafe --summary all
+      - run: |
+          tar -cJf ./zig-quickstart-${{matrix.os}}-${{matrix.arch}}-${{needs.variables.outputs.release-tag}}.tar.xz ./zig-out/bin/*
       - uses: actions/upload-artifact@v4
         with:
-          name: release-${{matrix.target}}
+          name: artifact-${{matrix.os}}-${{matrix.arch}}
           path: |
-            ./zig-out/bin/*
+            ./zig-quickstart-${{matrix.os}}-${{matrix.arch}}-${{needs.variables.outputs.release-tag}}.tar.xz
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [variables, build-linux-artifacts, build-macos-artifacts, build-windows-artifacts]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: artifact-*
+          merge-multiple: true
+      - run: ls -R artifacts
+
+      - name: release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./artifacts/*
+          prerelease: true
+          draft: false
+          name: ${{ needs.variables.outputs.release-tag }}
+          tag_name: ${{ needs.variables.outputs.release-tag }}

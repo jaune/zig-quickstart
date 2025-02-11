@@ -1,0 +1,14 @@
+{
+  "name": "compute-variables",
+  "version": "1.0.0",
+  "description": "jaune",
+  "main": "./index.mjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "jaune",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.13.4"
+  }
+}
