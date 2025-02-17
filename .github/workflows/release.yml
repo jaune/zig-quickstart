@@ -121,5 +121,5 @@ jobs:
           files: |
             ./artifacts/*
           prerelease: true
-          draft: false
+          draft: true
           name: ${{ needs.variables.outputs.release-name }}
