@@ -25,7 +25,7 @@ jobs:
 
               core.setOutput('zig-version', require('fs').readFileSync('./.zig-version', { encoding: 'utf-8' }).trim());
             } catch(err) {
-              core.error("Error while computing variables")
+              core.error('Error while computing variables.')
               core.setFailed(err)
             }
     outputs:
@@ -39,7 +39,8 @@ jobs:
     needs: [variables]
     strategy:
       matrix:
-        target: [x86_64-windows, aarch64-windows]
+        os: [windows]
+        arch: [x86_64, aarch64]
       fail-fast: false
     runs-on: windows-latest
     steps:
@@ -48,20 +49,21 @@ jobs:
         with:
           version: ${{needs.variables.outputs.zig-verison}}
       - run: |
-          zig build -Dtarget=${{matrix.target}} -Doptimize=ReleaseSafe --summary all
+          zig build -Dtarget=${{matrix.arch}}-${{matrix.os}} -Doptimize=ReleaseSafe --summary all
       - run: |
-          Compress-Archive -Path ./zig-out/bin/* -Destination zig-quickstart-${{matrix.target}}-${{needs.variables.outputs.artifact-tag}}.zip
+          Compress-Archive -Path ./zig-out/bin/* -Destination zig-quickstart-${{matrix.os}}-${{matrix.arch}}-${{needs.variables.outputs.artifact-tag}}.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: artifact-${{matrix.target}}
+          name: artifact-${{matrix.os}}-${{matrix.arch}}
           path: |
-            ./zig-quickstart-${{matrix.target}}-${{needs.variables.outputs.artifact-tag}}.zip
+            ./zig-quickstart-${{matrix.os}}-${{matrix.arch}}-${{needs.variables.outputs.artifact-tag}}.zip
 
   build-macos-artifacts:
     needs: [variables]
     strategy:
       matrix:
-        target: [x86_64-macos, aarch64-macos]
+        os: [macos]
+        arch: [x86_64, aarch64]
       fail-fast: false
     runs-on: macos-latest
     steps:
@@ -70,20 +72,21 @@ jobs:
         with:
           version: ${{needs.variables.outputs.zig-verison}}
       - run: |
-          zig build -Dtarget=${{matrix.target}} -Doptimize=ReleaseSafe --summary all
+          zig build -Dtarget=${{matrix.arch}}-${{matrix.os}} -Doptimize=ReleaseSafe --summary all
       - run: |
-          tar -cJf ./zig-quickstart-${{matrix.target}}-${{needs.variables.outputs.artifact-tag}}.tar.xz ./zig-out/bin/*
+          tar -cJf ./zig-quickstart-${{matrix.os}}-${{matrix.arch}}-${{needs.variables.outputs.artifact-tag}}.tar.xz ./zig-out/bin/*
       - uses: actions/upload-artifact@v4
         with:
-          name: artifact-${{matrix.target}}
+          name: artifact-${{matrix.os}}-${{matrix.arch}}
           path: |
-            ./zig-quickstart-${{matrix.target}}-${{needs.variables.outputs.artifact-tag}}.tar.xz
+            ./zig-quickstart-${{matrix.os}}-${{matrix.arch}}-${{needs.variables.outputs.artifact-tag}}.tar.xz
 
   build-linux-artifacts:
     needs: [variables]
     strategy:
       matrix:
-        target: [x86_64-linux, aarch64-linux]
+        os: [linux]
+        arch: [x86_64, aarch64]
       fail-fast: false
     runs-on: ubuntu-latest
     steps:
@@ -92,14 +95,14 @@ jobs:
         with:
           version: ${{needs.variables.outputs.zig-verison}}
       - run: |
-          zig build -Dtarget=${{matrix.target}} -Doptimize=ReleaseSafe --summary all
+          zig build -Dtarget=${{matrix.arch}}-${{matrix.os}} -Doptimize=ReleaseSafe --summary all
       - run: |
-          tar -cJf ./zig-quickstart-${{matrix.target}}-${{needs.variables.outputs.artifact-tag}}.tar.xz ./zig-out/bin/*
+          tar -cJf ./zig-quickstart-${{matrix.os}}-${{matrix.arch}}-${{needs.variables.outputs.artifact-tag}}.tar.xz ./zig-out/bin/*
       - uses: actions/upload-artifact@v4
         with:
-          name: artifact-${{matrix.target}}
+          name: artifact-${{matrix.os}}-${{matrix.arch}}
           path: |
-            ./zig-quickstart-${{matrix.target}}-${{needs.variables.outputs.artifact-tag}}.tar.xz
+            ./zig-quickstart-${{matrix.os}}-${{matrix.arch}}-${{needs.variables.outputs.artifact-tag}}.tar.xz
 
   create-release:
     runs-on: ubuntu-latest
@@ -118,5 +121,5 @@ jobs:
           files: |
             ./artifacts/*
           prerelease: true
-          draft: true
+          draft: false
           name: ${{ needs.variables.outputs.release-name }}
