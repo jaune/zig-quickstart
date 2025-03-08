@@ -10,7 +10,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const exe = b.addExecutable(.{
-        .name = "zig-quickstart",
+        .name = "zqs",
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
@@ -26,6 +26,6 @@ pub fn build(b: *std.Build) void {
 
     run_step.dependOn(&run_cmd.step);
 
-    const known_folders = b.dependency("known-folders", .{}).module("known-folders");
-    exe.root_module.addImport("known-folders", known_folders);
+    const known_folders = b.dependency("known_folders", .{}).module("known-folders");
+    exe.root_module.addImport("known_folders", known_folders);
 }

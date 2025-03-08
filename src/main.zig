@@ -1,7 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const known_folders = @import("known-folders");
+const known_folders = @import("known_folders");
 
 const fsx = @import("./fs-extra.zig");
 const archive = @import("./archive.zig");
@@ -131,8 +131,7 @@ fn download(allocator: Allocator, uri: *const std.Uri, writer: anytype) Download
     ) catch |e| oom(e) };
 
     // TODO: we take advantage of request.response.content_length
-
-    var buf: [std.mem.page_size]u8 = undefined;
+    var buf: [std.heap.page_size_max]u8 = undefined;
     while (true) {
         const len = request.reader().read(&buf) catch |err| return .{ .err = std.fmt.allocPrint(
             allocator,
